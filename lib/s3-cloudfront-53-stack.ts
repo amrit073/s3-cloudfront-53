@@ -33,7 +33,7 @@ export class S3Cloudfront53Stack extends cdk.Stack {
     const certificate = new certManager.Certificate(this, 'website-certificate', {
       domainName: `*.${DOMAIN_NAME}`,
       subjectAlternativeNames: [DOMAIN_NAME],
-      validation: certManager.CertificateValidation.fromDns(),
+      validation: certManager.CertificateValidation.fromDns(hostedZone),
     });
 
     // cloudfront distribution ,
