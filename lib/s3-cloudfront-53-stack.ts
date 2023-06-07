@@ -21,46 +21,48 @@ export class S3Cloudfront53Stack extends cdk.Stack {
 
     bucket.grantPublicAccess();
 
+    // HostedZone is created manually, 
+    // we create hosted zone for domain after purchasing domainname
     const hostedZone = route53.HostedZone.fromLookup(this, 'website-hostedzone', { domainName: DOMAIN_NAME });
 
+    //  we need to request certificate from domain name provider .
+    //  we can dot that by certificate manager
+    //  we request certificate for *.domain.com which will return certificate valid for any subdomain
+    //  we are mentioning bare domain  as subjectAlternativeNames  because some domain providers may 
+    //  not include  bare/root domain in certificate of *.domain.com
     const certificate = new certManager.Certificate(this, 'website-certificate', {
       domainName: `*.${DOMAIN_NAME}`,
       subjectAlternativeNames: [DOMAIN_NAME],
       validation: certManager.CertificateValidation.fromDns(),
     });
 
+    // cloudfront distribution ,
+    // we are providing array of domainNames  might get linked  to cloudfront
+    // Attached certificate should cover all domain in domainNames array
+    //
     const siteDistribution = new cloudfront.Distribution(this, "SiteDistribution", {
       defaultRootObject: 'index.html',
       domainNames: [`www.${DOMAIN_NAME}`, DOMAIN_NAME],
       certificate: certificate,
       defaultBehavior: {
         origin: new S3Origin(bucket),
+        // allows both http and https request
         viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.ALLOW_ALL
       }
     });
 
-    // to redirect www to non www, we can make bucket with www.domain.com and use domain.com as redirection
-
-    // or make two a records pointing to same coludfront. bad for seo
-
+    // for www.domain.com -> cloudfront
     new route53.ARecord(this, 'web-dns-www-A-record', {
       recordName: 'www',
       zone: hostedZone,
       target: route53.RecordTarget.fromAlias(new CloudFrontTarget(siteDistribution))
     })
+
+    // for domein.com -> cloudfront
     new route53.ARecord(this, 'web-dns-Bare-A-record', {
       zone: hostedZone,
       target: route53.RecordTarget.fromAlias(new CloudFrontTarget(siteDistribution))
     })
-
-    // s3.amritpaudel.me
-    // only works if bucket name is s3.amritpaudel.me
-    new route53.CnameRecord(this, 'web-dns-cname-record', {
-      zone: hostedZone,
-      domainName: bucket.bucketWebsiteDomainName,
-      recordName: 's3'
-    })
-
 
     new cdk.CfnOutput(this, 'cloudfront-url', {
       value: siteDistribution.distributionDomainName,
