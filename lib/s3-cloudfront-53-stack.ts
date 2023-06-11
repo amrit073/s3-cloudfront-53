@@ -58,7 +58,7 @@ export class S3Cloudfront53Stack extends cdk.Stack {
       target: route53.RecordTarget.fromAlias(new CloudFrontTarget(siteDistribution))
     })
 
-    // for domein.com -> cloudfront
+    // for domain.com -> cloudfront
     new route53.ARecord(this, 'web-dns-Bare-A-record', {
       zone: hostedZone,
       target: route53.RecordTarget.fromAlias(new CloudFrontTarget(siteDistribution))
